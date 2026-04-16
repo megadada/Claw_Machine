@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Claw Machine Game</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- React & ReactDOM -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <!-- Babel for JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+        body { font-family: 'Inter', sans-serif; overflow-x: hidden; }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+        .animate-shake { animation: shake 0.2s ease-in-out 0s 2; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+        
+        // Inline SVG Icons for maximum stability
+        const Camera = ({ size = 24, className = "" }) => (
+            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+                <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/>
+            </svg>
+        );
+        const RotateCcw = ({ size = 24, className = "" }) => (
+            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+                <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/>
+            </svg>
+        );
+        const Upload = ({ size = 24, className = "" }) => (
+            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+            </svg>
+        );
+        const Trophy = ({ size = 24, className = "" }) => (
+            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+                <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/>
+            </svg>
+        );
+        const Heart = ({ size = 24, style, fill = "none" }) => (
+            <svg width={size} height={size} viewBox="0 0 24 24" fill={fill} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={style}>
+                <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />
+            </svg>
+        );
+        const Palette = ({ size = 24, className = "" }) => (
+            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+                <circle cx="13.5" cy="6.5" r=".5"/><circle cx="17.5" cy="10.5" r=".5"/><circle cx="8.5" cy="7.5" r=".5"/><circle cx="6.5" cy="12.5" r=".5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.92 0 1.71-.74 1.71-1.71 0-.43-.17-.83-.45-1.13l-.14-.15a1.5 1.5 0 0 1 0-1.99c.31-.32.74-.5 1.2-.5h1.9c3.14 0 5.71-2.54 5.71-5.71 0-4.65-4.4-8.31-9.92-8.31Z"/>
+            </svg>
+        );
+        const Lock = ({ size = 24, className = "" }) => (
+            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+            </svg>
+        );
+        const Key = ({ size = 24, className = "" }) => (
+            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+                <path d="m21 2-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0 3 3L22 7l-3-3L15.5 7.5z"/>
+            </svg>
+        );
+
+        const App = () => {
+          const [isAuthenticated, setIsAuthenticated] = useState(false);
+          const [password, setPassword] = useState('');
+          const [authError, setAuthError] = useState(false);
+
+          const [step, setStep] = useState('intro');
+          const [charImgs, setCharImgs] = useState({ focus: null, success: null, fail: null });
+          const [dollImgs, setDollImgs] = useState([]);
+          const [dollPile, setDollPile] = useState([]); 
+          const [lives, setLives] = useState(3);
+          const [craneX, setCraneX] = useState(0);
+          const [craneY, setCraneY] = useState(0);
+          const [isMovingRight, setIsMovingRight] = useState(true);
+          const [gameState, setGameState] = useState('idle');
+          const [sessionResults, setSessionResults] = useState(null); 
+          const [totalResults, setTotalResults] = useState([]); 
+          const [isCraning, setIsCraning] = useState(false);
+          const [themeColor, setThemeColor] = useState('#f43f5e'); 
+
+          const requestRef = useRef();
+
+          const handleAuth = (e) => {
+            e.preventDefault();
+            if (password === 'ETQ88') {
+              setIsAuthenticated(true);
+            } else {
+              setAuthError(true);
+              setTimeout(() => setAuthError(false), 1000);
+            }
+          };
+
+          const handleCharUpload = (type, e) => {
+            const file = e.target.files[0];
+            if (file) setCharImgs(prev => ({ ...prev, [type]: URL.createObjectURL(file) }));
+          };
+
+          const handleDollsUpload = (e) => {
+            const files = Array.from(e.target.files);
+            const urls = files.map(file => URL.createObjectURL(file));
+            setDollImgs(prev => [...prev, ...urls]);
+          };
+
+          const startGame = () => {
+            if (!charImgs.focus || !charImgs.success || !charImgs.fail || dollImgs.length === 0) {
+              alert("이미지를 모두 등록해 주세요!");
+              return;
+            }
+            
+            const initialPile = Array.from({ length: 20 }).map((_, i) => ({
+              id: i,
+              img: dollImgs[Math.floor(Math.random() * dollImgs.length)],
+              rotate: (Math.random() - 0.5) * 30,
+              offsetY: Math.random() * 5
+            }));
+            
+            setDollPile(initialPile);
+            setTotalResults([]);
+            setLives(3);
+            setStep('gaming');
+            setGameState('focused');
+            setIsCraning(false);
+            setCraneX(0);
+            setCraneY(0);
+            setSessionResults(null);
+          };
+
+          const animateHorizontal = () => {
+            if (!isCraning) {
+              setCraneX(prev => {
+                let next = isMovingRight ? prev + 1.5 : prev - 1.5;
+                if (next >= 92) { setIsMovingRight(false); return 92; }
+                if (next <= 0) { setIsMovingRight(true); return 0; }
+                return next;
+              });
+            }
+            requestRef.current = requestAnimationFrame(animateHorizontal);
+          };
+
+          useEffect(() => {
+            if (step === 'gaming' && !isCraning) {
+              requestRef.current = requestAnimationFrame(animateHorizontal);
+            }
+            return () => cancelAnimationFrame(requestRef.current);
+          }, [step, isMovingRight, isCraning]);
+
+          const startGachaSequence = () => {
+            if (isCraning) return;
+            setIsCraning(true);
+            cancelAnimationFrame(requestRef.current);
+
+            let y = 0;
+            const downInterval = setInterval(() => {
+              y += 4;
+              setCraneY(y);
+              if (y >= 90) {
+                clearInterval(downInterval);
+                
+                const luck = Math.random();
+                const centerDist = Math.abs(craneX - 50);
+                let success = false;
+
+                if (centerDist < 20) {
+                  success = luck < 0.55;
+                } else {
+                  success = luck < 0.30;
+                }
+
+                let pickedItem = null;
+                if (success && dollPile.length > 0) {
+                  const randomIndex = Math.floor(Math.random() * dollPile.length);
+                  pickedItem = dollPile[randomIndex];
+                  setDollPile(prev => prev.filter((_, i) => i !== randomIndex));
+                }
+
+                setSessionResults(pickedItem);
+                setGameState(pickedItem ? 'success' : 'fail');
+
+                setTimeout(() => {
+                  const upInterval = setInterval(() => {
+                    y -= 4;
+                    setCraneY(y);
+                    if (y <= 0) {
+                      clearInterval(upInterval);
+                      finishTurn(pickedItem);
+                    }
+                  }, 30);
+                }, 500);
+              }
+            }, 30);
+          };
+
+          const finishTurn = (pickedItem) => {
+            if (pickedItem) {
+              setTotalResults(prev => [...prev, pickedItem.img]);
+            }
+            setTimeout(() => {
+              if (lives > 1) {
+                setLives(prev => prev - 1);
+                setGameState('focused');
+                setIsCraning(false);
+                setSessionResults(null);
+                setCraneY(0);
+              } else {
+                setStep('result');
+              }
+            }, 800);
+          };
+
+          if (!isAuthenticated) {
+            return (
+              <div className="min-h-screen bg-slate-100 flex items-center justify-center p-6 text-slate-800">
+                <form 
+                  onSubmit={handleAuth}
+                  className={`bg-white p-10 rounded-[40px] shadow-2xl w-full max-w-sm flex flex-col items-center space-y-6 border-2 transition-all ${authError ? 'border-rose-500 animate-shake' : 'border-slate-100'}`}
+                >
+                  <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center text-slate-400">
+                    <Lock size={32} />
+                  </div>
+                  <div className="text-center">
+                    <h1 className="text-2xl font-black text-slate-800">접속 암호</h1>
+                    <p className="text-slate-400 text-sm mt-1 font-medium">비밀번호를 입력하여 입장하세요.</p>
+                  </div>
+                  <div className="w-full relative">
+                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300">
+                        <Key size={18} />
+                    </div>
+                    <input 
+                      type="password" 
+                      placeholder="••••••"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-slate-400 font-bold tracking-widest transition-all"
+                    />
+                  </div>
+                  <button 
+                    type="submit"
+                    className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black hover:bg-slate-800 transition-all active:scale-95 shadow-lg"
+                  >
+                    확인
+                  </button>
+                </form>
+              </div>
+            );
+          }
+
+          if (step === 'intro') {
+            return (
+              <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6 text-slate-800">
+                <div className="max-w-md w-full bg-white rounded-3xl shadow-xl p-8 space-y-6 border border-slate-200">
+                  <div className="flex justify-between items-center">
+                    <h1 className="text-3xl font-black italic uppercase tracking-tight" style={{ color: themeColor }}>Claw Machine</h1>
+                    <div className="flex items-center gap-2 bg-slate-50 p-2 rounded-xl border border-slate-100">
+                      <Palette size={16} className="text-slate-400" />
+                      <input 
+                        type="color" 
+                        value={themeColor} 
+                        onChange={(e) => setThemeColor(e.target.value)}
+                        className="w-6 h-6 rounded-md cursor-pointer border-none bg-transparent"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-3 gap-3">
+                    {['focus', 'success', 'fail'].map((id) => (
+                      <label key={id} className="cursor-pointer group flex flex-col items-center">
+                        <div 
+                          className="w-full aspect-square bg-slate-50 rounded-2xl flex items-center justify-center border-2 border-dashed border-slate-200 overflow-hidden relative transition-all"
+                          style={{ borderColor: charImgs[id] ? 'transparent' : '' }}
+                        >
+                          {charImgs[id] ? <img src={charImgs[id]} className="w-full h-full object-cover" alt={id} /> : <div className="text-slate-300"><Camera size={24} /></div>}
+                          <div className="absolute inset-0 opacity-0 group-hover:opacity-100 bg-black/5 transition-opacity" />
+                        </div>
+                        <span className="text-[10px] font-bold mt-1 text-slate-400">{id === 'focus' ? '기본' : id === 'success' ? '성공' : '실패'}</span>
+                        <input type="file" className="hidden" accept="image/*" onChange={(e) => handleCharUpload(id, e)} />
+                      </label>
+                    ))}
+                  </div>
+
+                  <label className="cursor-pointer block group">
+                    <div 
+                      className="w-full h-24 rounded-2xl flex flex-col items-center justify-center border-2 border-dashed overflow-hidden px-4 text-center transition-colors"
+                      style={{ backgroundColor: `${themeColor}10`, borderColor: `${themeColor}30` }}
+                    >
+                      {dollImgs.length > 0 ? (
+                        <div className="flex -space-x-2 justify-center">
+                          {dollImgs.slice(0, 5).map((src, i) => <img key={i} src={src} className="w-10 h-10 rounded-full border-2 border-white object-cover shadow-sm" alt="doll" />)}
+                        </div>
+                      ) : (
+                        <>
+                          <div style={{ color: themeColor }} className="mb-1 opacity-60"><Upload size={20} /></div>
+                          <span className="text-xs font-bold leading-tight opacity-60" style={{ color: themeColor }}>인형 이미지들 업로드</span>
+                        </>
+                      )}
+                    </div>
+                    <input type="file" className="hidden" accept="image/*" multiple onChange={handleDollsUpload} />
+                  </label>
+
+                  <button 
+                    onClick={startGame} 
+                    className="w-full text-white font-black py-4 rounded-2xl shadow-lg transition-all text-xl active:scale-95"
+                    style={{ backgroundColor: themeColor, boxShadow: `0 10px 15px -3px ${themeColor}40` }}
+                  >
+                    시작하기
+                  </button>
+                </div>
+              </div>
+            );
+          }
+
+          if (step === 'gaming') {
+            const currentFace = isCraning 
+              ? (gameState === 'success' ? charImgs.success : (craneY > 50 ? (gameState === 'fail' ? charImgs.fail : charImgs.focus) : charImgs.focus)) 
+              : charImgs.focus;
+
+            return (
+              <div className="min-h-screen bg-[#f8f9fc] flex flex-col items-center justify-center p-4 relative text-slate-800">
+                <div className="w-full max-w-sm flex justify-between items-center mb-3 px-2">
+                  <div className="flex gap-1.5">
+                    {[...Array(3)].map((_, i) => (
+                      <Heart 
+                        key={i} 
+                        size={22} 
+                        style={{ color: i < lives ? themeColor : '#cbd5e1' }} 
+                        fill={i < lives ? themeColor : 'none'}
+                      />
+                    ))}
+                  </div>
+                  <div className="text-slate-500 font-extrabold text-xs tracking-widest bg-white px-4 py-1.5 rounded-full shadow-sm border border-slate-100">TRY {4 - lives}/3</div>
+                </div>
+
+                <div className="w-full max-w-sm aspect-[4/5] bg-white rounded-[40px] border-[12px] border-slate-200 relative overflow-hidden flex flex-col shadow-2xl shadow-slate-200">
+                  <div className="absolute top-5 right-5 w-20 h-20 rounded-3xl border-4 border-white bg-slate-50 shadow-lg overflow-hidden z-30">
+                    <img src={currentFace} className="w-full h-full object-cover" alt="reaction" />
+                  </div>
+
+                  <div className="w-full h-12 bg-slate-100/50 border-b-2 border-slate-200 relative z-20">
+                     <div className="absolute top-0 w-12 h-full flex flex-col items-center" style={{ left: `${craneX}%` }}>
+                      <div className="w-3 h-full bg-slate-300 shadow-inner"></div>
+                      <div className="absolute top-full flex flex-col items-center" style={{ height: `${craneY * 2.8}px` }}>
+                        <div className="w-1.5 h-full bg-slate-400"></div>
+                        <div className="w-16 h-12 bg-slate-400 rounded-xl flex items-center justify-center relative border-2 border-white shadow-lg">
+                           <div className={`absolute left-0 w-2.5 h-10 bg-slate-400 origin-top transition-transform duration-200 rounded-full ${craneY > 85 ? 'rotate-12' : 'rotate-45'}`}></div>
+                           <div className={`absolute right-0 w-2.5 h-10 bg-slate-400 origin-top transition-transform duration-200 rounded-full ${craneY > 85 ? '-rotate-12' : '-rotate-45'}`}></div>
+                           
+                           {sessionResults && (
+                              <img 
+                                src={sessionResults.img} 
+                                className="absolute top-10 w-14 h-14 object-cover rounded-2xl border-4 border-white shadow-xl animate-bounce" 
+                                alt="picked-doll" 
+                              />
+                           )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex-1 relative flex items-end justify-center pb-6 px-4 bg-gradient-to-b from-slate-50/50 to-white overflow-hidden">
+                      <div className="w-full flex flex-wrap justify-center content-end gap-1.5">
+                        {dollPile.map((item) => (
+                          <img 
+                            key={item.id} 
+                            src={item.img} 
+                            className="w-14 h-14 object-cover rounded-2xl shadow-sm border-2 border-slate-100 transition-opacity duration-300" 
+                            style={{ 
+                              transform: `rotate(${item.rotate}deg) translateY(${item.offsetY}px)`,
+                            }} 
+                            alt="doll" 
+                          />
+                        ))}
+                      </div>
+                  </div>
+                  <div className="absolute inset-0 bg-gradient-to-tr from-white/20 via-transparent to-white/40 pointer-events-none"></div>
+                </div>
+
+                <div className="w-full max-w-sm mt-8 px-4 flex flex-col items-center">
+                  <div className="bg-slate-200 h-3 w-full rounded-full overflow-hidden mb-6 border border-slate-100 shadow-inner">
+                    <div className="h-full transition-all duration-75" style={{ width: `${craneX}%`, backgroundColor: themeColor }}></div>
+                  </div>
+                  <button 
+                    onClick={startGachaSequence}
+                    disabled={isCraning}
+                    className={`w-full py-6 rounded-[30px] text-2xl font-black tracking-tighter transition-all transform active:scale-95 shadow-xl text-white
+                      ${isCraning ? 'bg-slate-100 text-slate-300 cursor-not-allowed shadow-none border border-slate-200' : ''}`}
+                    style={{ 
+                      backgroundColor: isCraning ? '' : themeColor,
+                      boxShadow: isCraning ? '' : `0 15px 25px -5px ${themeColor}40`
+                    }}
+                  >
+                    {isCraning ? "WAITING..." : "CATCH!"}
+                  </button>
+                </div>
+              </div>
+            );
+          }
+
+          if (step === 'result') {
+            const count = totalResults.length;
+            let resultText = "실패!";
+            let resultColor = "#94a3b8";
+            let resultFace = charImgs.fail;
+
+            if (count === 3) {
+              resultText = "대성공!";
+              resultColor = themeColor;
+              resultFace = charImgs.success;
+            } else if (count >= 1) {
+              resultText = "성공!";
+              resultColor = "#fb923c"; // Orange 400
+              resultFace = charImgs.success;
+            }
+
+            return (
+              <div className="min-h-screen bg-[#f8f9fc] flex flex-col items-center justify-center p-6 text-slate-800">
+                <div className="w-full max-w-xs bg-white rounded-[50px] p-10 flex flex-col items-center space-y-8 shadow-2xl shadow-slate-200 border border-slate-100">
+                  <div className="relative">
+                    <div 
+                      className="w-36 h-36 rounded-full overflow-hidden border-8 shadow-xl"
+                      style={{ borderColor: count > 0 ? `${themeColor}20` : '#f8fafc' }}
+                    >
+                      <img src={resultFace} className="w-full h-full object-cover" alt="result" />
+                    </div>
+                    {count === 3 && (
+                      <div 
+                        className="absolute -top-4 -right-4 p-2 rounded-full shadow-lg animate-bounce"
+                        style={{ backgroundColor: '#fbbf24' }}
+                      >
+                        <Trophy size={24} className="text-white" />
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="text-center">
+                    <h2 className="text-4xl font-black italic tracking-tighter" style={{ color: resultColor }}>{resultText}</h2>
+                    <p className="text-slate-400 font-bold text-sm mt-2">총 {count}개의 인형을 잡았어요!</p>
+                  </div>
+
+                  <div className="flex flex-wrap justify-center gap-3 max-h-32 overflow-y-auto p-4 w-full bg-slate-50 rounded-[30px]">
+                    {totalResults.length > 0 ? (
+                      totalResults.map((src, i) => <img key={i} src={src} className="w-14 h-14 rounded-2xl shadow-sm border-2 border-white object-cover" alt="item" />)
+                    ) : (
+                      <span className="text-xs text-slate-300 font-bold py-4">획득한 인형이 없어요...</span>
+                    )}
+                  </div>
+
+                  <button onClick={() => setStep('intro')} className="w-full bg-slate-900 text-white font-bold py-5 rounded-3xl flex items-center justify-center gap-2 hover:bg-slate-800 transition-all active:scale-95 shadow-lg shadow-slate-200">
+                    <RotateCcw size={20} /> 다시 도전하기
+                  </button>
+                </div>
+              </div>
+            );
+          }
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
